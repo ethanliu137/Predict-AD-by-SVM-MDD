@@ -43,12 +43,11 @@ def plot_learning_curve(estimator, X, y, title):
     plt.legend(loc="best")
     plt.show()
 
-# ==================== 1. 載入和準備資料 ====================
+# ==================== Loading dataset ====================
 
 
 df = pd.read_csv("data_standardized_complete_v2.csv")  #'age', 'HbA1c_LOCF', 'GNB3G'('HAMD_V4_LOCF', 'oxytocin_LOCF','pers_err_LOCF', 'SSS.iib_s', 'whoqol28_ov')
 
-# 特徵 (X) 和 目標變數 (y1, y2)
 X = df[[ 'd1_corti_LOCF',
     'oxytocin_LOCF',
     'whoqol28_ov',
@@ -57,14 +56,13 @@ X = df[[ 'd1_corti_LOCF',
     'OXTR']]
 y = df[['remissionv41_LOCF', 'responderv41_LOCF']]
 
-# ==================== 2. 資料分割 ====================
+# ==================== Split data ====================
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.25, random_state=seed, stratify=y['remissionv41_LOCF']
 )
 
-# ==================== 3. 建立和訓練 SVM 模型 (MultiOutput) ====================
+# ==================== create and train SVM (MultiOutput) ====================
 base_model = make_pipeline(MinMaxScaler(), SVC(kernel=ker, random_state=seed, probability=True))
-#'estimator__svc__C': 105, 'estimator__svc__gamma': 0.00952
 
 param_grid = {
     'estimator__svc__C': [180],
@@ -93,7 +91,6 @@ y_res = y['responderv41_LOCF'].values
 
 cv = StratifiedKFold(n_splits=fold, shuffle=True, random_state=seed)
 
-# 改成 accuracy
 scores_rem = cross_val_score(clf_rem, X, y_rem, cv=cv, scoring="accuracy", n_jobs=-1)
 scores_res = cross_val_score(clf_res, X, y_res, cv=cv, scoring="accuracy", n_jobs=-1)
 
@@ -101,25 +98,23 @@ print(f"Remission Accuracy:  {scores_rem.mean():.4f} ± {scores_rem.std(ddof=1):
 print(f"Responder Accuracy: {scores_res.mean():.4f} ± {scores_res.std(ddof=1):.4f} (n={len(scores_res)})")
 
 print(f"Accuracy: {mean_score:.4f} ± {std_score:.4f}")
-# ==================== 4. 使用最佳模型進行預測 ====================
+
+# ==================== using best model to test ====================
 best_model = grid.best_estimator_
 y_pred = best_model.predict(X_test)
 
 plot_learning_curve(best_model.estimators_[0], X, y['remissionv41_LOCF'],
                     "Learning Curve (SVM) - remissionv41_LOCF")
 
-# 對 responder 畫學習曲線
 plot_learning_curve(best_model.estimators_[1], X, y['responderv41_LOCF'],
                     "Learning Curve (SVM) - responderv41_LOCF")
 
 clf_rem = best_model.estimators_[0]
 clf_res = best_model.estimators_[1]
 
-# y 需是 DataFrame，內含 0/1
 y_rem = y['remissionv41_LOCF'].values
 y_res = y['responderv41_LOCF'].values
 
-# 用 decision_function（不需要 probability=True）
 auc_scorer = make_scorer(roc_auc_score, needs_threshold=True)
 
 cv = StratifiedKFold(n_splits=fold, shuffle=True, random_state=seed)
@@ -129,8 +124,8 @@ scores_res = cross_val_score(clf_res, X, y_res, cv=cv, scoring="roc_auc", n_jobs
 
 print(f"Remission AUC: {scores_rem.mean():.4f} ± {scores_rem.std(ddof=1):.4f}")
 print(f"Responder AUC: {scores_res.mean():.4f} ± {scores_res.std(ddof=1):.4f}")
-# ==================== 5. Confusion Matrix 視覺化 ====================
 
+# ==================== Confusion Matrix ====================
 for i, col in enumerate(y.columns):
     cm = confusion_matrix(y_test[col], y_pred[:, i])
     plt.figure(figsize=(6,4))
