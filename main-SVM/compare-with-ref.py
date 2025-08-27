@@ -21,13 +21,11 @@ def plot_learning_curve(estimator, X, y, title):
         train_sizes=np.linspace(0.1, 1.0, 10), shuffle=True, random_state=seed
     )
 
-    # 計算平均與標準差
     train_mean = np.mean(train_scores, axis=1)
     train_std = np.std(train_scores, axis=1)
     test_mean = np.mean(test_scores, axis=1)
     test_std = np.std(test_scores, axis=1)
 
-    # 畫圖
     plt.figure(figsize=(8,6))
     plt.plot(train_sizes, train_mean, label="Training score", color="blue")
     plt.fill_between(train_sizes, train_mean-train_std, train_mean+train_std,
@@ -44,8 +42,6 @@ def plot_learning_curve(estimator, X, y, title):
     plt.show()
 
 # ==================== Loading dataset ====================
-
-
 df = pd.read_csv("data_standardized_complete_v2.csv")  #'age', 'HbA1c_LOCF', 'GNB3G'('HAMD_V4_LOCF', 'oxytocin_LOCF','pers_err_LOCF', 'SSS.iib_s', 'whoqol28_ov')
 
 X = df[[ 'd1_corti_LOCF',
