@@ -27,8 +27,8 @@
 - Expand dataset for more robust validation.
 
 ## requirements
-numpy
-pandas
-scikit-learn
-matplotlib
-seaborn
+-numpy
+-pandas
+-scikit-learn
+-matplotlib
+-seaborn
