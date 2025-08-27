@@ -24,4 +24,11 @@
 
 ## Future Work
 - Compare with other models (e.g., Random Forest, Deep Neural Networks).  
-- Expand dataset for more robust validation.  
+- Expand dataset for more robust validation.
+
+## requirements
+numpy
+pandas
+scikit-learn
+matplotlib
+seaborn
