@@ -14,4 +14,6 @@
 | Age          | 年紀                        | -0.016 ± 0.054          |
 | HbA1c_LOCF   | 糖化血色素 / 血糖控制狀況   | -0.009 ± 0.024          |
 
-<img width="1240" height="697" alt="image" src="https://github.com/user-attachments/assets/b9302013-65df-4dbb-b7f8-4441a10ae7dc" />
+---
+<img width="1832" height="996" alt="image" src="https://github.com/user-attachments/assets/b5a59b5f-c3a9-459b-bb9d-9647b0a13633" />
+---
