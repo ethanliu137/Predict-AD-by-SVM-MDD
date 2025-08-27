@@ -22,7 +22,7 @@
 
 ---
 
-## ✅ Final Accuracy
+## Final Accuracy
 | Metric          | Value                   |
 |-----------------|--------------------------|
 | Remission AUC   | 0.4622 ± 0.0877           |
