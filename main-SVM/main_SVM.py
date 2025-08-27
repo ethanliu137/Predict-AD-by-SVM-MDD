@@ -11,14 +11,13 @@ from sklearn.inspection import permutation_importance
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-seed = 45
-fold = 8
-ker = "rbf"
+sett = 45
+c = 8
 
 def plot_learning_curve(estimator, X, y, title):
     train_sizes, train_scores, test_scores = learning_curve(
-        estimator, X, y, cv=fold, scoring="accuracy", n_jobs=-1,
-        train_sizes=np.linspace(0.1, 1.0, 10), shuffle=True, random_state=seed
+        estimator, X, y, cv=c, scoring="accuracy", n_jobs=-1,
+        train_sizes=np.linspace(0.1, 1.0, 10), shuffle=True, random_state=sett
     )
 
     # 計算平均與標準差
@@ -43,32 +42,29 @@ def plot_learning_curve(estimator, X, y, title):
     plt.legend(loc="best")
     plt.show()
 
-# ==================== 1. 載入和準備資料 ====================
+# ==================== Loading data ====================
+df = pd.read_csv("data_standardized_complete_v2.csv")
 
-
-df = pd.read_csv("data_standardized_complete_v2.csv")  #'age', 'HbA1c_LOCF', 'GNB3G'('HAMD_V4_LOCF', 'oxytocin_LOCF','pers_err_LOCF', 'SSS.iib_s', 'whoqol28_ov')
-
-# 特徵 (X) 和 目標變數 (y1, y2)
-X = df.drop(['age', 'HbA1c_LOCF', 'GNB3G', 'res_no_1', 'remissionv41_LOCF', 'responderv41_LOCF'], axis=1)
+# define X, Y
+X = df.drop(['res_no_1', 'remissionv41_LOCF', 'responderv41_LOCF'], axis=1)
 y = df[['remissionv41_LOCF', 'responderv41_LOCF']]
 
-# ==================== 2. 資料分割 ====================
+# ==================== Split data ====================
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.25, random_state=seed, stratify=y['remissionv41_LOCF']
+    X, y, test_size=0.2, random_state=sett, stratify=y['remissionv41_LOCF']
 )
 
-# ==================== 3. 建立和訓練 SVM 模型 (MultiOutput) ====================
-base_model = make_pipeline(MinMaxScaler(), SVC(kernel=ker, random_state=seed, probability=True))
-#'estimator__svc__C': 105, 'estimator__svc__gamma': 0.00952
+# ==================== Create and train SVM (MultiOutput) ====================
+base_model = make_pipeline(MinMaxScaler(), SVC(kernel="rbf", random_state=sett))
 
 param_grid = {
-    'estimator__svc__C': [180],
-    'estimator__svc__gamma': ['scale', 0.008]
+    'estimator__svc__C': [50, 65, 70],
+    'estimator__svc__gamma': ['scale', 0.01, 0.005, 0.0025]
 }
 
 multi_clf = MultiOutputClassifier(base_model)
 
-grid = GridSearchCV(multi_clf, param_grid, cv=fold, scoring='accuracy', verbose=1, return_train_score=True)
+grid = GridSearchCV(multi_clf, param_grid, cv=c, scoring='accuracy', verbose=1, return_train_score=True)
 grid.fit(X_train, y_train)
 
 print("最佳參數:", grid.best_params_)
@@ -86,9 +82,8 @@ clf_res = best_model.estimators_[1]
 y_rem = y['remissionv41_LOCF'].values
 y_res = y['responderv41_LOCF'].values
 
-cv = StratifiedKFold(n_splits=fold, shuffle=True, random_state=seed)
+cv = StratifiedKFold(n_splits=c, shuffle=True, random_state=sett)
 
-# 改成 accuracy
 scores_rem = cross_val_score(clf_rem, X, y_rem, cv=cv, scoring="accuracy", n_jobs=-1)
 scores_res = cross_val_score(clf_res, X, y_res, cv=cv, scoring="accuracy", n_jobs=-1)
 
@@ -96,7 +91,7 @@ print(f"Remission Accuracy:  {scores_rem.mean():.4f} ± {scores_rem.std(ddof=1):
 print(f"Responder Accuracy: {scores_res.mean():.4f} ± {scores_res.std(ddof=1):.4f} (n={len(scores_res)})")
 
 print(f"Accuracy: {mean_score:.4f} ± {std_score:.4f}")
-# ==================== 4. 使用最佳模型進行預測 ====================
+# ==================== Using best parameter to predict the result ====================
 best_model = grid.best_estimator_
 y_pred = best_model.predict(X_test)
 
@@ -107,25 +102,28 @@ plot_learning_curve(best_model.estimators_[0], X, y['remissionv41_LOCF'],
 plot_learning_curve(best_model.estimators_[1], X, y['responderv41_LOCF'],
                     "Learning Curve (SVM) - responderv41_LOCF")
 
+res = permutation_importance(best_model, X_test, y_test, n_repeats=30, random_state=sett)
+fi = pd.DataFrame({ "feature": X_test.columns, "importance_mean": res.importances_mean, 
+                   "importance_std": res.importances_std}).sort_values("importance_mean", ascending=False)
+
+print(fi)
 clf_rem = best_model.estimators_[0]
 clf_res = best_model.estimators_[1]
 
-# y 需是 DataFrame，內含 0/1
 y_rem = y['remissionv41_LOCF'].values
 y_res = y['responderv41_LOCF'].values
 
-# 用 decision_function（不需要 probability=True）
 auc_scorer = make_scorer(roc_auc_score, needs_threshold=True)
 
-cv = StratifiedKFold(n_splits=fold, shuffle=True, random_state=seed)
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
 scores_rem = cross_val_score(clf_rem, X, y_rem, cv=cv, scoring="roc_auc", n_jobs=-1)
 scores_res = cross_val_score(clf_res, X, y_res, cv=cv, scoring="roc_auc", n_jobs=-1)
 
 print(f"Remission AUC: {scores_rem.mean():.4f} ± {scores_rem.std(ddof=1):.4f}")
 print(f"Responder AUC: {scores_res.mean():.4f} ± {scores_res.std(ddof=1):.4f}")
-# ==================== 5. Confusion Matrix 視覺化 ====================
-
+# ==================== Confusion Matrix ====================
+'''
 for i, col in enumerate(y.columns):
     cm = confusion_matrix(y_test[col], y_pred[:, i])
     plt.figure(figsize=(6,4))
@@ -135,9 +133,8 @@ for i, col in enumerate(y.columns):
     acc = accuracy_score(y_test[col], y_pred[:, i])
     print(f"{col} - Accuracy: {acc:.4f}")
 
-    '''
     plt.xlabel("Predicted")
     plt.ylabel("Actual")
     plt.title(f"Confusion Matrix - {col}")
     plt.show()
-    '''
+'''
